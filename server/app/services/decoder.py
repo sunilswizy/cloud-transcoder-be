@@ -1,5 +1,5 @@
-from core.settings import DECODE_FILE_PATH, UPLOAD_FILE_PATH
-from core.config import resolutions
+from configs.settings import DECODE_FILE_PATH, UPLOAD_FILE_PATH
+from configs.config import resolutions
 import subprocess
 import boto3
 import urllib.parse
@@ -58,7 +58,7 @@ def clean_up_files(output_files):
     print("files has been cleaned up")
 
 def process_messages(payload):
-
+    # Initializing and parsing the payload
     record = payload["Records"][0]
     bucket = record["s3"]["bucket"]["name"]
     encoded_key = record["s3"]["object"]["key"]

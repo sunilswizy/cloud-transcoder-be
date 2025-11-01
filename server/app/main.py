@@ -1,14 +1,12 @@
-import boto3
 import json
-from decoder import process_messages
-from core.settings import SQS_QUEUE_URL, REGION
+from boto3 import exceptions, client
+from services.decoder import process_messages
+from configs.settings import SQS_QUEUE_URL, REGION
 
-client = boto3.client('s3')
-sqs = boto3.client('sqs', region_name=REGION)
+sqs = client('sqs', region_name=REGION)
 
 #listen for messages
 print("Started Listening for messages...")
-
 while True:
 
     try:
@@ -42,5 +40,8 @@ while True:
 
             print("Message has been deleted (Ack) ")
 
+    except exceptions.botocore.exceptions.ParamValidationError as e:
+        print("Invalid Parameter to SQS:", e)
+        raise(e)
     except Exception as e:
-        print("Error processing the message (Nack)", e)
+        print("Error processing the message (NACK):", e)
