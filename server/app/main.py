@@ -1,30 +1,27 @@
 import json
 from boto3 import exceptions, client
-from services.decoder import process_messages
+from services.transcoder import process_messages
 from configs.settings import SQS_QUEUE_URL, REGION
 
-sqs = client('sqs', region_name=REGION)
+sqs = client("sqs", region_name=REGION)
 
-#listen for messages
+# listen for messages
 print("Started Listening for messages...")
 while True:
 
     try:
         response = sqs.receive_message(
-            QueueUrl=SQS_QUEUE_URL,
-            MaxNumberOfMessages=1,
-            WaitTimeSeconds=10
+            QueueUrl=SQS_QUEUE_URL, MaxNumberOfMessages=1, WaitTimeSeconds=10
         )
 
-        messages = response.get('Messages', [])
+        messages = response.get("Messages", [])
 
         for msg in messages:
-            body = json.loads(msg['Body'])
+            body = json.loads(msg["Body"])
 
             if body.get("Event") == "s3:TestEvent":
                 sqs.delete_message(
-                    QueueUrl=SQS_QUEUE_URL,
-                    ReceiptHandle=msg['ReceiptHandle']
+                    QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
                 )
                 print("TestEvent deleted (Ack)")
                 continue
@@ -34,14 +31,22 @@ while True:
             print("Message has been processed")
 
             sqs.delete_message(
-                QueueUrl=SQS_QUEUE_URL,
-                ReceiptHandle=msg['ReceiptHandle']
+                QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
             )
 
             print("Message has been deleted (Ack) ")
 
     except exceptions.botocore.exceptions.ParamValidationError as e:
         print("Invalid Parameter to SQS:", e)
-        raise(e)
+        raise
+
+    except exceptions.botocore.exceptions.ClientError as e:
+        print("Invalid Credentials:", e)
+        raise
+
+    except exceptions.botocore.exceptions.NoCredentialsError as e:
+        print("No AWS Credentials found:", e)
+        raise
+
     except Exception as e:
         print("Error processing the message (NACK):", e)

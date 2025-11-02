@@ -4,18 +4,17 @@ import subprocess
 import boto3
 import urllib.parse
 import os
+import mimetypes
 
-client = boto3.client('s3')
+client = boto3.client("s3")
+
 
 def download_file(key, bucket, input_path):
     try:
-        response = client.get_object(
-            Bucket=bucket,
-            Key=key
-        )
+        response = client.get_object(Bucket=bucket, Key=key)
 
         with open(input_path, "wb") as f:
-            f.write(response['Body'].read())
+            f.write(response["Body"].read())
 
     except Exception as e:
         print("Get file error ", e)
@@ -29,21 +28,27 @@ def upload_file(bucket, path):
         print("Error at uploading file ", e)
         raise e
 
+
 def delete_file(path):
     if os.path.exists(path):
         return os.remove(path)
     print("File path does not exists", path)
 
+
 def transcode_videos(bucket, file_name, input_path, output_base):
     output_files = []
 
     for label, size in resolutions.items():
-        output_path = f'{output_base}/{file_name}-{label}.mp4'
+        output_path = f"{output_base}/{file_name}-{label}.mp4"
         command = [
-            "ffmpeg", "-i", input_path,
-            "-vf", f"scale={size}",
-            "-c:a", "copy",
-            output_path
+            "ffmpeg",
+            "-i",
+            input_path,
+            "-vf",
+            f"scale={size}",
+            "-c:a",
+            "copy",
+            output_path,
         ]
         subprocess.run(command, check=True)
         upload_file(bucket, output_path)
@@ -51,11 +56,13 @@ def transcode_videos(bucket, file_name, input_path, output_base):
 
     return output_files
 
+
 def clean_up_files(output_files):
     for path in output_files:
         delete_file(path)
-    
+
     print("files has been cleaned up")
+
 
 def process_messages(payload):
     # Initializing and parsing the payload
@@ -64,17 +71,33 @@ def process_messages(payload):
     encoded_key = record["s3"]["object"]["key"]
     key = urllib.parse.unquote_plus(encoded_key)
     file_name = key.split("/")[-1]
+    file_name_without_extension = os.path.splitext(file_name)[0]
 
-    if not bucket or not key or not file_name: 
-        print(f"Invalid payload - bucket = {bucket}, key = {key}, file_name = {file_name}")
+    if not bucket or not key or not file_name:
+        print(
+            f"Invalid payload - bucket = {bucket}, key = {key}, file_name = {file_name}"
+        )
         return False
-    
-    print(f"Started processing - bucket = {bucket}, key = {key}, file_name = {file_name}")
-    input_path = f'{UPLOAD_FILE_PATH}/{file_name}'
+
+    if not is_video_file(file_name):
+        print(f"Invalid Video File - file_name = {file_name}")
+        return False
+
+    print(
+        f"Started processing - bucket = {bucket}, key = {key}, file_name = {file_name}"
+    )
+    input_path = f"{UPLOAD_FILE_PATH}/{file_name}"
     output_base = DECODE_FILE_PATH
 
+    print("bucket", bucket)
+    print("file_name", file_name, file_name_without_extension)
+    print("input_path", input_path)
+    print("output_base", output_base)
+
     download_file(key, bucket, input_path)
-    output_files = transcode_videos(bucket, file_name, input_path, output_base)
+    output_files = transcode_videos(
+        bucket, file_name_without_extension, input_path, output_base
+    )
 
     print("Processed and uploaded resolutions = ", output_files)
 
@@ -83,3 +106,7 @@ def process_messages(payload):
 
     return True
 
+
+def is_video_file(file_path: str):
+    mime_type, _ = mimetypes.guess_type(file_path)
+    return mime_type is not None and mime_type.startswith("video")
