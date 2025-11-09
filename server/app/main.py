@@ -1,12 +1,24 @@
 import json
+import sys, signal
 from boto3 import exceptions, client
 from services.transcoder import process_messages
 from configs.settings import SQS_QUEUE_URL, REGION
+from logger.logging import get_logger
 
 sqs = client("sqs", region_name=REGION)
+logger = get_logger(__name__)
+
+
+def shutdown_handler(sig, frame):
+    logger.info("Shutting down listener...")
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, shutdown_handler)
+signal.signal(signal.SIGTERM, shutdown_handler)
 
 # listen for messages
-print("Started Listening for messages...")
+logger.log("Started Listening for messages...")
 while True:
 
     try:
@@ -23,30 +35,30 @@ while True:
                 sqs.delete_message(
                     QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
                 )
-                print("TestEvent deleted (Ack)")
+                logger.warning("TestEvent deleted (Ack)")
                 continue
 
-            print("Message Received", body)
+            logger.info("Message Received", body)
             process_messages(body)
-            print("Message has been processed")
+            logger.info("Message has been processed")
 
             sqs.delete_message(
                 QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
             )
 
-            print("Message has been deleted (Ack) ")
+            logger.info("Message has been deleted (Ack) ")
 
     except exceptions.botocore.exceptions.ParamValidationError as e:
-        print("Invalid Parameter to SQS:", e)
+        logger.error("Invalid Parameter to SQS:", e)
         raise
 
     except exceptions.botocore.exceptions.ClientError as e:
-        print("Invalid Credentials:", e)
+        logger.error("Invalid Credentials:", e)
         raise
 
     except exceptions.botocore.exceptions.NoCredentialsError as e:
-        print("No AWS Credentials found:", e)
+        logger.error("No AWS Credentials found:", e)
         raise
 
     except Exception as e:
-        print("Error processing the message (NACK):", e)
+        logger.exception("Error processing the message (NACK):", e)
