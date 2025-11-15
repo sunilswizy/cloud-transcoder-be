@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 
 def shutdown_handler(sig, frame):
-    logger.info("Shutting down listener...")
+    logger.info(msg="Shutting down listener...")
     sys.exit(0)
 
 
@@ -18,7 +18,7 @@ signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
 # listen for messages
-logger.log("Started Listening for messages...")
+logger.info("Started Listening for messages...")
 while True:
 
     try:
@@ -35,30 +35,30 @@ while True:
                 sqs.delete_message(
                     QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
                 )
-                logger.warning("TestEvent deleted (Ack)")
+                logger.warning(msg="TestEvent deleted (Ack)")
                 continue
 
-            logger.info("Message Received", body)
+            logger.info(msg=f"Message Received {body}")
             process_messages(body)
-            logger.info("Message has been processed")
+            logger.info(msg="Message has been processed")
 
             sqs.delete_message(
                 QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
             )
 
-            logger.info("Message has been deleted (Ack) ")
+            logger.info(msg="Message has been deleted (Ack) ")
 
     except exceptions.botocore.exceptions.ParamValidationError as e:
-        logger.error("Invalid Parameter to SQS:", e)
+        logger.error(msg=f"Invalid Parameter to SQS: {e}")
         raise
 
     except exceptions.botocore.exceptions.ClientError as e:
-        logger.error("Invalid Credentials:", e)
+        logger.error(msg=f"Invalid Credentials: {e}")
         raise
 
     except exceptions.botocore.exceptions.NoCredentialsError as e:
-        logger.error("No AWS Credentials found:", e)
+        logger.error(msg=f"No AWS Credentials found: {e}")
         raise
 
     except Exception as e:
-        logger.exception("Error processing the message (NACK):", e)
+        logger.exception(msg=f"Error processing the message (NACK): {e}")
