@@ -1,0 +1,61 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyd
+*.pdb
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE / editor stuff
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Bytecode compiled files
+*.egg
+*.whl
+
+# Docker
+Dockerfile*
+docker-compose*.yaml
+
+# Environment files
+.env
+*.env
+
+# Local data
+data/
+tmp/
+.cache/
+
+# Tests output
+.coverage
+pytest_cache/
+
+# Model/checkpoint files (if any)
+*.h5
+*.pt
+*.weights

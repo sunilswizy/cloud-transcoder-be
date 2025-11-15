@@ -33,3 +33,5 @@ override.tf.json
 terraform.rc
 
 *.plan
+raw-videos
+transcoded-videos
