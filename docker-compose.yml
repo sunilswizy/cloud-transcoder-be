@@ -4,3 +4,8 @@ services:
   backend: 
     image: 567995762001.dkr.ecr.us-east-1.amazonaws.com/cloud-transcoder/backend
     restart: unless-stopped
+    environment:
+      - UPLOAD_FILE_PATH=${UPLOAD_FILE_PATH}
+      - DECODE_FILE_PATH=${DECODE_FILE_PATH}
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - REGION=${REGION}
