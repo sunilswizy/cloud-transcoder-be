@@ -17,48 +17,54 @@ def shutdown_handler(sig, frame):
 signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
-# listen for messages
-logger.info("Started Listening for messages...")
-while True:
 
-    try:
-        response = sqs.receive_message(
-            QueueUrl=SQS_QUEUE_URL, MaxNumberOfMessages=1, WaitTimeSeconds=10
-        )
+def init_app():
+    # listen for messages
+    logger.info("Started Listening for messages...")
+    while True:
 
-        messages = response.get("Messages", [])
+        try:
+            response = sqs.receive_message(
+                QueueUrl=SQS_QUEUE_URL, MaxNumberOfMessages=1, WaitTimeSeconds=10
+            )
 
-        for msg in messages:
-            body = json.loads(msg["Body"])
+            messages = response.get("Messages", [])
 
-            if body.get("Event") == "s3:TestEvent":
+            for msg in messages:
+                body = json.loads(msg["Body"])
+
+                if body.get("Event") == "s3:TestEvent":
+                    sqs.delete_message(
+                        QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
+                    )
+                    logger.warning(msg="TestEvent deleted (Ack)")
+                    continue
+
+                logger.info(msg=f"Message Received {body}")
+                process_messages(body)
+                logger.info(msg="Message has been processed")
+
                 sqs.delete_message(
                     QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
                 )
-                logger.warning(msg="TestEvent deleted (Ack)")
-                continue
 
-            logger.info(msg=f"Message Received {body}")
-            process_messages(body)
-            logger.info(msg="Message has been processed")
+                logger.info(msg="Message has been deleted (Ack) ")
 
-            sqs.delete_message(
-                QueueUrl=SQS_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
-            )
+        except exceptions.botocore.exceptions.ParamValidationError as e:
+            logger.error(msg=f"Invalid Parameter to SQS: {e}")
+            raise
 
-            logger.info(msg="Message has been deleted (Ack) ")
+        except exceptions.botocore.exceptions.ClientError as e:
+            logger.error(msg=f"Invalid Credentials: {e}")
+            raise
 
-    except exceptions.botocore.exceptions.ParamValidationError as e:
-        logger.error(msg=f"Invalid Parameter to SQS: {e}")
-        raise
+        except exceptions.botocore.exceptions.NoCredentialsError as e:
+            logger.error(msg=f"No AWS Credentials found: {e}")
+            raise
 
-    except exceptions.botocore.exceptions.ClientError as e:
-        logger.error(msg=f"Invalid Credentials: {e}")
-        raise
+        except Exception as e:
+            logger.exception(msg=f"Error processing the message (NACK): {e}")
 
-    except exceptions.botocore.exceptions.NoCredentialsError as e:
-        logger.error(msg=f"No AWS Credentials found: {e}")
-        raise
 
-    except Exception as e:
-        logger.exception(msg=f"Error processing the message (NACK): {e}")
+if __name__ == "__main__":
+    init_app()
